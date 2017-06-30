@@ -280,11 +280,11 @@ def subsetNeatData(infile, outfile):
  
     statement = '''
     zcat  %(infile)s |
-    awk 'NR<4000000' |
+    awk 'NR<4000001' |
     gzip > %(outfile)s ;
     checkpoint ;
     zcat  %(infile2)s |
-    awk 'NR<4000000'  |
+    awk 'NR<4000001'  |
     gzip > %(outfile2)s
     '''
 
@@ -1193,7 +1193,7 @@ def quantifySequins():
 
 add_models_gtfs = []
 
-for add_type in ["skip_exons", "incomplete"]:
+for add_type in ["skip_exons", "incomplete", "3prime"]:
     for fraction in P.asList(PARAMS['%s_fractions' % add_type]):
         for iteration in range(0, PARAMS['%s_iterations' % add_type]):
             add_models_gtfs.append(
@@ -1201,11 +1201,12 @@ for add_type in ["skip_exons", "incomplete"]:
                     add_type, fraction, iteration))
 
 @mkdir('sequins/add_models/skip_exons',
-       'sequins/add_models/incomplete')
+       'sequins/add_models/incomplete',
+       'sequins/add_models/3prime')
 @originate(add_models_gtfs)
 def buildAddModels(outfile):
     ''' build a set of reference transcriptomes with additional
-    transcripts with skipped exons '''
+    transcripts with skipped exons, incomplete transcripts and transcripts with alternative 3' ends '''
 
     # how to avoid hardcoding this?
     infile = 'annotations/sequins.gtf.gz'
@@ -1213,13 +1214,20 @@ def buildAddModels(outfile):
     fraction = os.path.basename(outfile).split("_")[1]
     method = os.path.basename(os.path.dirname(outfile))
 
+    if method == '3prime':
+        additional_options = '--min-3prime %s --max-3prime %s' % (
+            PARAMS['3prime_min'], PARAMS['3prime_max'])
+    else:
+        additional_options = ""
+
     statement = '''
     cgat add_transcripts_gtf
     --infile-geneset-gtf=%(infile)s
     --outfile-geneset-tsv=%(outfile)s.tsv
     --method=%(method)s
     --fraction=%(fraction)s
-    -L %(outfile)s.log |
+    -L %(outfile)s.log
+    %(additional_options)s |
     gzip > %(outfile)s
     '''
     
